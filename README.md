@@ -526,8 +526,6 @@
 
 #### Cons:
 
-- More complex to implement
-- Requires tracking connection counts
 - May not be optimal for short-lived connections
 
 ### IP hash:
@@ -542,4 +540,3 @@
 
 - May lead to uneven distribution if clients have varying loads
 - Poor distribution if many clients share the same IP (e.g., behind NAT)
-- Not suitable for dynamic scaling
