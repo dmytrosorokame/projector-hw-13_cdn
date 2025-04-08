@@ -1,0 +1,6 @@
+rndc.key
+rndc.conf
+rndc.conf.local
+rndc.conf.local.key
+rndc.conf.local.key.pem
+rndc.conf.local.pem

@@ -1,0 +1,10 @@
+assets.net. 300 IN SOA assets.net. hostmaster.assets.net. (
+        1 ; serial
+        1800 ; refresh (30 minutes)
+        600 ; retry (10 minutes)
+        604800 ; expire (1 week)
+        300 ; minimum (5 minutes)
+)
+assets.net. 300 IN NS assets.net.
+assets.net. 300 IN A 172.30.0.11
+*.assets.net. 300 IN A 172.30.0.11

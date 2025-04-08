@@ -1,0 +1,161 @@
+services:
+  bind:
+    image: ubuntu/bind9:latest
+    environment:
+      - BIND9_USER=root
+    container_name: bind
+    ports:
+      - 1053:53/udp
+      - 1053:53/tcp
+    volumes:
+      - ./bind/config:/etc/bind:rw
+      - ./cache:/var/cache/bind
+      - ./records:/var/lib/bind
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "apt-get update && apt-get install -y dnsutils && dig @localhost assets.net || exit 1",
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.2
+
+  lb1-usa:
+    image: nginx:latest
+    container_name: lb1-usa
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/lb1-usa/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      bind:
+        condition: service_healthy
+      node-1:
+        condition: service_started
+      node-2:
+        condition: service_started
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.10
+
+  lb2-world:
+    image: nginx:latest
+    container_name: lb2-world
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/lb2-world/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      bind:
+        condition: service_healthy
+      node-3:
+        condition: service_started
+      node-4:
+        condition: service_started
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.11
+
+  node-1:
+    image: nginx:latest
+    container_name: node-1
+    volumes:
+      - ./nginx/node-1:/usr/share/nginx/html:ro
+      - ./nginx/node-1/index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.20
+
+  node-2:
+    image: nginx:latest
+    container_name: node-2
+    volumes:
+      - ./nginx/node-2:/usr/share/nginx/html:ro
+      - ./nginx/node-2/index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.21
+
+  node-3:
+    image: nginx:latest
+    container_name: node-3
+    volumes:
+      - ./nginx/node-3:/usr/share/nginx/html:ro
+      - ./nginx/node-3/index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.22
+
+  node-4:
+    image: nginx:latest
+    container_name: node-4
+    volumes:
+      - ./nginx/node-4:/usr/share/nginx/html:ro
+      - ./nginx/node-4/index.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.23
+
+  client-usa:
+    image: nginx:latest
+    container_name: client-usa
+    dns:
+      - 172.30.0.2
+    dns_opt:
+      - ndots:1
+      - timeout:2
+      - attempts:2
+    dns_search: .
+    depends_on:
+      bind:
+        condition: service_healthy
+      lb1-usa:
+        condition: service_started
+    command: >
+      /bin/bash -c "
+      apt-get update &&
+      apt-get install -y dnsutils curl &&
+      echo '172.30.0.10 assets.net' >> /etc/hosts &&
+      nginx -g 'daemon off;'
+      "
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.30
+
+  client-world:
+    image: nginx:latest
+    container_name: client-world
+    dns:
+      - 172.30.0.2
+    dns_opt:
+      - ndots:1
+      - timeout:2
+      - attempts:2
+    dns_search: .
+    depends_on:
+      bind:
+        condition: service_healthy
+      lb2-world:
+        condition: service_started
+    command: >
+      /bin/bash -c "
+      apt-get update &&
+      apt-get install -y dnsutils curl &&
+      echo '172.30.0.11 assets.net' >> /etc/hosts &&
+      nginx -g 'daemon off;'
+      "
+    networks:
+      cdn_net:
+        ipv4_address: 172.30.0.31
+
+networks:
+  cdn_net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
